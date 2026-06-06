@@ -1,0 +1,6 @@
+{
+  "name": "MathQuest",
+  "description": "An educational, highly interactive, premium math adventure game for kids with custom profiles, parent progress reports, multilingual support (Albanian & English), and offline play.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
