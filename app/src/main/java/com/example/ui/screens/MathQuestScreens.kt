@@ -21,6 +21,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -36,6 +49,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.speech.tts.TextToSpeech
+import android.media.ToneGenerator
+import android.media.AudioManager
 import com.example.data.model.Profile
 import com.example.data.model.ProgressLog
 import com.example.ui.localization.LocalStrings
@@ -99,6 +115,9 @@ fun MainGameApp(viewModel: MathQuestViewModel) {
                 }
                 is QuestScreen.ParentDashboard -> {
                     ParentDashboardScreen(viewModel, lang)
+                }
+                is QuestScreen.LetterTracing -> {
+                    LetterTracingScreen(viewModel, activeProfile, lang)
                 }
             }
         }
@@ -275,24 +294,53 @@ fun ProfileSelectionScreen(viewModel: MathQuestViewModel) {
 
         // Global quick selector prior to login
         Row(
-            modifier = Modifier.padding(top = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(top = 20.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AssistChip(
-                onClick = { selectedGlobalLang = "sq" },
-                label = { Text("🇦🇱 Shqip", fontWeight = FontWeight.Bold) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = if (selectedGlobalLang == "sq") Color(0xFFFFECC8) else Color.White
+            Row(
+                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AssistChip(
+                    onClick = { selectedGlobalLang = "sq" },
+                    label = { Text("🇦🇱 Shqip", fontWeight = FontWeight.Bold) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (selectedGlobalLang == "sq") Color(0xFFFFECC8) else Color.White
+                    )
                 )
-            )
-            AssistChip(
-                onClick = { selectedGlobalLang = "en" },
-                label = { Text("🇬🇧 English", fontWeight = FontWeight.Bold) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = if (selectedGlobalLang == "en") Color(0xFFFFECC8) else Color.White
+                AssistChip(
+                    onClick = { selectedGlobalLang = "en" },
+                    label = { Text("🇬🇧 English", fontWeight = FontWeight.Bold) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (selectedGlobalLang == "en") Color(0xFFFFECC8) else Color.White
+                    )
                 )
-            )
+                AssistChip(
+                    onClick = { selectedGlobalLang = "de" },
+                    label = { Text("🇩🇪 Deutsch", fontWeight = FontWeight.Bold) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (selectedGlobalLang == "de") Color(0xFFFFECC8) else Color.White
+                    )
+                )
+                AssistChip(
+                    onClick = { selectedGlobalLang = "it" },
+                    label = { Text("🇮🇹 Italiano", fontWeight = FontWeight.Bold) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (selectedGlobalLang == "it") Color(0xFFFFECC8) else Color.White
+                    )
+                )
+                AssistChip(
+                    onClick = { selectedGlobalLang = "fr" },
+                    label = { Text("🇫🇷 Français", fontWeight = FontWeight.Bold) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (selectedGlobalLang == "fr") Color(0xFFFFECC8) else Color.White
+                    )
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
 
             IconButton(
                 onClick = { viewModel.prepareParentsGate() },
@@ -487,26 +535,48 @@ fun ProfileSelectionScreen(viewModel: MathQuestViewModel) {
                         )
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Button(
                                 onClick = { childLang = "sq" },
-                                modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (childLang == "sq") Color(0xFFFF9100) else Color(0xFFE6E2D5)
                                 )
                             ) {
-                                Text("🇦🇱 Shqip", fontWeight = FontWeight.Bold)
+                                Text("🇦🇱 Shqip", fontWeight = FontWeight.Bold, color = if (childLang == "sq") Color.White else Color(0xFF5A442E))
                             }
                             Button(
                                 onClick = { childLang = "en" },
-                                modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (childLang == "en") Color(0xFFFF9100) else Color(0xFFE6E2D5)
                                 )
                             ) {
-                                Text("🇬🇧 English", fontWeight = FontWeight.Bold)
+                                Text("🇬🇧 English", fontWeight = FontWeight.Bold, color = if (childLang == "en") Color.White else Color(0xFF5A442E))
+                            }
+                            Button(
+                                onClick = { childLang = "de" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (childLang == "de") Color(0xFFFF9100) else Color(0xFFE6E2D5)
+                                )
+                            ) {
+                                Text("🇩🇪 Deutsch", fontWeight = FontWeight.Bold, color = if (childLang == "de") Color.White else Color(0xFF5A442E))
+                            }
+                            Button(
+                                onClick = { childLang = "it" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (childLang == "it") Color(0xFFFF9100) else Color(0xFFE6E2D5)
+                                )
+                            ) {
+                                Text("🇮🇹 Italiano", fontWeight = FontWeight.Bold, color = if (childLang == "it") Color.White else Color(0xFF5A442E))
+                            }
+                            Button(
+                                onClick = { childLang = "fr" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (childLang == "fr") Color(0xFFFF9100) else Color(0xFFE6E2D5)
+                                )
+                            ) {
+                                Text("🇫🇷 Français", fontWeight = FontWeight.Bold, color = if (childLang == "fr") Color.White else Color(0xFF5A442E))
                             }
                         }
 
@@ -661,8 +731,15 @@ fun HomeScreen(viewModel: MathQuestViewModel, activeProfile: Profile?, lang: Str
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
+                    val headerText = when (lang) {
+                        "sq" -> "Zgjidh Nivelin e Aventurave:"
+                        "de" -> "Wähle das Abenteuerlevel:"
+                        "it" -> "Scegli il livello:"
+                        "fr" -> "Choisissez le niveau:"
+                        else -> "Choose Adventure Level:"
+                    }
                     Text(
-                        text = "🎮 " + (if (lang == "sq") "Zgjidh Nivelin e Aventurave:" else "Choose Adventure Level:"),
+                        text = "🎮 $headerText",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFFE65100)
@@ -676,9 +753,27 @@ fun HomeScreen(viewModel: MathQuestViewModel, activeProfile: Profile?, lang: Str
                     listOf("EASY", "MEDIUM", "HARD").forEach { level ->
                         val isSel = activeProfile.difficulty == level
                         val label = when (level) {
-                            "EASY" -> if (lang == "sq") "Niveli 1 (Klasik)" else "Level 1 (Easy)"
-                            "MEDIUM" -> if (lang == "sq") "Niveli 2 (Shumëzim)" else "Level 2 (Mult)"
-                            else -> if (lang == "sq") "Niveli 3 (Pjesëtim)" else "Level 3 (Div)"
+                            "EASY" -> when (lang) {
+                                "sq" -> "Niveli 1 (Klasik)"
+                                "de" -> "Level 1 (Klassik)"
+                                "it" -> "Livello 1 (Classico)"
+                                "fr" -> "Niveau 1 (Classique)"
+                                else -> "Level 1 (Easy)"
+                            }
+                            "MEDIUM" -> when (lang) {
+                                "sq" -> "Niveli 2 (Shumëzim)"
+                                "de" -> "Level 2 (Mal)"
+                                "it" -> "Livello 2 (Molt)"
+                                "fr" -> "Niveau 2 (Mult)"
+                                else -> "Level 2 (Mult)"
+                            }
+                            else -> when (lang) {
+                                "sq" -> "Niveli 3 (Pjesëtim)"
+                                "de" -> "Level 3 (Geteilt)"
+                                "it" -> "Livello 3 (Div)"
+                                "fr" -> "Niveau 3 (Div)"
+                                else -> "Level 3 (Div)"
+                            }
                         }
                         val bgColor = if (isSel) Color(0xFFFF9100) else Color.White
                         val textColor = if (isSel) Color.White else Color(0xFF5D4037)
@@ -691,6 +786,62 @@ fun HomeScreen(viewModel: MathQuestViewModel, activeProfile: Profile?, lang: Str
                                 .background(bgColor)
                                 .border(1.5.dp, borderCol, RoundedCornerShape(10.dp))
                                 .clickable { viewModel.updateDifficulty(level) }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = textColor,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // REGISTERED MATH RANGE SELECTOR
+        val mathRangeState by viewModel.mathRange
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 14.dp)
+                .shadow(4.dp, RoundedCornerShape(16.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+            shape = RoundedCornerShape(16.dp),
+            border = borderStrokeHelper(Color(0xFF81C784))
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "🎯 " + LocalStrings.get("range_selector_title", lang),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF2E7D32)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("1-10", "10-100").forEach { rangeVal ->
+                        val isSel = mathRangeState == rangeVal
+                        val label = if (rangeVal == "1-10") LocalStrings.get("range_1_10", lang) else LocalStrings.get("range_10_100", lang)
+                        val bgColor = if (isSel) Color(0xFF4CAF50) else Color.White
+                        val textColor = if (isSel) Color.White else Color(0xFF2E7D32)
+                        val borderCol = if (isSel) Color(0xFF388E3C) else Color(0xFFC8E6C9)
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(bgColor)
+                                .border(1.5.dp, borderCol, RoundedCornerShape(10.dp))
+                                .clickable { viewModel.mathRange.value = rangeVal }
                                 .padding(vertical = 8.dp, horizontal = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -751,6 +902,39 @@ fun HomeScreen(viewModel: MathQuestViewModel, activeProfile: Profile?, lang: Str
                 ) {
                     Text("🇬🇧", fontSize = 20.sp)
                 }
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(if (lang == "de") Color(0xFFFFECC8) else Color.White)
+                        .border(1.5.dp, if (lang == "de") Color(0xFFFF8A00) else Color(0xFFDCD6C7), CircleShape)
+                        .clickable { viewModel.updateLanguage("de") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🇩🇪", fontSize = 20.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(if (lang == "it") Color(0xFFFFECC8) else Color.White)
+                        .border(1.5.dp, if (lang == "it") Color(0xFFFF8A00) else Color(0xFFDCD6C7), CircleShape)
+                        .clickable { viewModel.updateLanguage("it") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🇮🇹", fontSize = 20.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(if (lang == "fr") Color(0xFFFFECC8) else Color.White)
+                        .border(1.5.dp, if (lang == "fr") Color(0xFFFF8A00) else Color(0xFFDCD6C7), CircleShape)
+                        .clickable { viewModel.updateLanguage("fr") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🇫🇷", fontSize = 20.sp)
+                }
             }
         }
 
@@ -761,6 +945,76 @@ fun HomeScreen(viewModel: MathQuestViewModel, activeProfile: Profile?, lang: Str
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Letter Tracing Chapter
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(6.dp, RoundedCornerShape(22.dp))
+                        .border(2.5.dp, Color.White, RoundedCornerShape(22.dp)),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(Brush.linearGradient(colors = listOf(Color(0xFFFFB74D), Color(0xFFFF9100))))
+                            .padding(16.dp)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = LocalStrings.get("quest_tracing", lang),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(text = "✍️🦁🐱", fontSize = 28.sp)
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = LocalStrings.get("quest_tracing_desc", lang),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFFFFF3E0),
+                                lineHeight = 18.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Button(
+                                    onClick = { viewModel.navigateTo(QuestScreen.LetterTracing) },
+                                    modifier = Modifier.testTag("btn_play_tracing"),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = when (lang) {
+                                            "sq" -> "Fillo Shkrimin 📝"
+                                            "de" -> "Schreiben Starten 📝"
+                                            "it" -> "Inizia Scrittura 📝"
+                                            "fr" -> "Commencer l'Écriture 📝"
+                                            else -> "Start Tracing 📝"
+                                        },
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color(0xFFE65100)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Addition Chapter
             item {
                 AdventureChapterCard(
@@ -976,12 +1230,45 @@ fun AdventureScreen(
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    val audioController = rememberAudioFeedback(lang)
+    var triggerSuccessAnim by remember { mutableStateOf(false) }
+    var triggerFailAnim by remember { mutableStateOf(false) }
+    var shakeOffset by remember { mutableStateOf(0.dp) }
+
+    val isSelectionOverlayFlow = viewModel.showQuizSuccessOverlay.value
+    val isCorrectSubmittedFlow = viewModel.isAnswerCorrectState.value
+
+    LaunchedEffect(isSelectionOverlayFlow) {
+        if (isSelectionOverlayFlow) {
+            if (isCorrectSubmittedFlow) {
+                triggerSuccessAnim = true
+                triggerFailAnim = false
+                audioController.playSuccess()
+            } else {
+                triggerSuccessAnim = false
+                triggerFailAnim = true
+                audioController.playError()
+
+                // Shake physics
+                repeat(6) { index ->
+                    shakeOffset = if (index % 2 == 0) (-12).dp else 12.dp
+                    delay(60)
+                }
+                shakeOffset = 0.dp
+            }
+        } else {
+            triggerSuccessAnim = false
+            triggerFailAnim = false
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         // HEADER ROW WITH EXIT AND TITLE
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1119,6 +1406,7 @@ fun AdventureScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .offset(x = shakeOffset)
                     .animateContentSize()
                     .border(
                         3.dp,
@@ -1235,6 +1523,13 @@ fun AdventureScreen(
             }
         }
     }
+
+    InteractiveCelebrationOverlay(
+        triggerSuccess = triggerSuccessAnim,
+        triggerFail = triggerFailAnim,
+        modifier = Modifier.fillMaxSize()
+    )
+}
 }
 
 // THE CARTON MATH OBJECTS VISUALIZER WRAPPER
@@ -2460,4 +2755,984 @@ private fun borderStrokeHelper(color: Color) = androidx.compose.foundation.Borde
 // Extension functions helper to prevent path or tag typings
 private fun Modifier.fillModifierWithTestTag(tag: String): Modifier {
     return this.fillMaxWidth().testTag(tag)
+}
+
+// ==========================================
+// 6. INTERACTIVE LETTER TRACING MODULE
+// ==========================================
+data class TracingLetter(
+    val char: String,
+    val nameSq: String,
+    val nameEn: String,
+    val emoji: String,
+    val arrowX: Float,
+    val arrowY: Float,
+    val arrowAngle: Float
+)
+
+val TRACING_LETTERS = listOf(
+    TracingLetter("A", "Arushi", "Apple", "🐻", 0.5f, 0.18f, 135f),
+    TracingLetter("B", "Breshka", "Bee", "🐢", 0.35f, 0.18f, 90f),
+    TracingLetter("C", "Cifli", "Cat", "🐱", 0.65f, 0.25f, 180f),
+    TracingLetter("D", "Dhelpra", "Dolphin", "🦊", 0.35f, 0.18f, 90f),
+    TracingLetter("E", "Elefanti", "Elephant", "🐘", 0.35f, 0.18f, 90f),
+    TracingLetter("F", "Flutura", "Frog", "🦋", 0.35f, 0.18f, 90f),
+    TracingLetter("H", "Hëna", "Horse", "🌙", 0.35f, 0.18f, 90f),
+    TracingLetter("I", "Iriqi", "Iguana", "🦔", 0.5f, 0.18f, 90f),
+    TracingLetter("O", "Oktapodi", "Owl", "🐙", 0.5f, 0.18f, 180f),
+    TracingLetter("T", "Tigri", "Tiger", "🐯", 0.3f, 0.18f, 0f)
+)
+
+@Composable
+fun LetterTracingScreen(
+    viewModel: MathQuestViewModel,
+    activeProfile: Profile?,
+    lang: String
+) {
+    if (activeProfile == null) return
+
+    var activeLetterIdx by remember { mutableStateOf(0) }
+    val letterData = TRACING_LETTERS[activeLetterIdx]
+
+    // Capture child's custom drawing paths
+    val userLines = remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
+
+    val crayons = listOf(
+        Color(0xFFA855F7), // Purple start (requested color)
+        Color(0xFFFF2A2A), // Red
+        Color(0xFF2A7BFF), // Blue
+        Color(0xFF2AFF54), // Green
+        Color(0xFFFFCC00)  // Gold
+    )
+    var selectedColor by remember { mutableStateOf(crayons[0]) }
+    var strokeSize by remember { mutableFloatStateOf(16f) }
+
+    var showCongratsDialog by remember { mutableStateOf(false) }
+    val audioController = rememberAudioFeedback(lang)
+
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.3f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(800, easing = androidx.compose.animation.core.LinearEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        )
+    )
+
+    // Trigger audio once when congrats dialog happens
+    LaunchedEffect(showCongratsDialog) {
+        if (showCongratsDialog) {
+            audioController.playSuccess()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+        // TOP CONTROLLER HEADER
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(
+                onClick = { viewModel.goBack() },
+                modifier = Modifier.testTag("btn_back_tracing")
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back logo",
+                    tint = Color(0xFF4E342E)
+                )
+            }
+
+            Text(
+                text = "${LocalStrings.get("tracing_title", lang)} ✍️",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFFE65100),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Coins stats
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFFF6D6))
+                    .border(1.5.dp, Color(0xFFFBC02D), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(text = "🪙", fontSize = 16.sp)
+                Text(
+                    text = activeProfile.coins.toString(),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFFE65100)
+                )
+            }
+        }
+
+        // HORIZONTAL LETTER SELECTOR CAROUSEL
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(16.dp),
+            border = borderStrokeHelper(Color(0xFFFFE0B2))
+        ) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(TRACING_LETTERS.size) { idx ->
+                    val isSel = activeLetterIdx == idx
+                    val char = TRACING_LETTERS[idx].char
+                    val letterColor = if (isSel) Color(0xFFFF9100) else Color(0xFFFFF3E0)
+                    val textColor = if (isSel) Color.White else Color(0xFFE65100)
+                    val borderColors = if (isSel) Color(0xFFFF6D00) else Color(0xFFFFD180)
+
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(letterColor)
+                            .border(2.dp, borderColors, RoundedCornerShape(12.dp))
+                            .clickable {
+                                activeLetterIdx = idx
+                                userLines.value = emptyList() // clear current drawings
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = char,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = textColor
+                        )
+                    }
+                }
+            }
+        }
+
+        // ACTIVE LETTER EXERCISE CARD INCLUDING CANVAS
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .shadow(4.dp, RoundedCornerShape(24.dp))
+                .border(2.5.dp, Color.White, RoundedCornerShape(24.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Object and name banner
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = letterData.emoji, fontSize = 34.sp)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = if (lang == "sq") letterData.nameSq else letterData.nameEn,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF5D4037)
+                        )
+                        Text(
+                            text = when (lang) {
+                                "sq" -> "Shkronja ${letterData.char}"
+                                "de" -> "Buchstabe ${letterData.char}"
+                                "it" -> "Lettera ${letterData.char}"
+                                "fr" -> "Lettre ${letterData.char}"
+                                else -> "Letter ${letterData.char}"
+                            },
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // WRITING CANVAS PORT
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFFEEEEEE))
+                        .border(1.5.dp, Color(0xFFE0E0E0), RoundedCornerShape(18.dp))
+                ) {
+                    // Start Arrow explanation tag overlay
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(10.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFE8F5E9))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = LocalStrings.get("hint_start_arrow", lang),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
+
+                    // Clear canvas feedback overlay when empty
+                    if (userLines.value.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = when (lang) {
+                                    "sq" -> "Vizato me gisht mbi vija ✍️"
+                                    "de" -> "Zeichne mit dem Finger auf den Linien ✍️"
+                                    "it" -> "Disegna con il dito sulle linee ✍️"
+                                    "fr" -> "Dessinez avec votre doigt sur les lignes ✍️"
+                                    else -> "Draw with your finger over lines ✍️"
+                                },
+                                fontSize = 13.sp,
+                                color = Color.Gray.copy(alpha = 0.8f),
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val canvasWidth = constraints.maxWidth.toFloat()
+                        val canvasHeight = constraints.maxHeight.toFloat()
+
+                        // Calculate total distance automatically to detect finish
+                        val totalDistance = remember(userLines.value) {
+                            userLines.value.sumOf { line ->
+                                var d = 0.0
+                                for (i in 0 until line.size - 1) {
+                                    val p1 = line[i]
+                                    val p2 = line[i+1]
+                                    val dx = (p2.x - p1.x).toDouble()
+                                    val dy = (p2.y - p1.y).toDouble()
+                                    d += kotlin.math.sqrt(dx * dx + dy * dy)
+                                }
+                                d
+                            }.toFloat()
+                        }
+
+                        LaunchedEffect(totalDistance) {
+                            val threshold = (canvasWidth + canvasHeight) * 0.7f 
+                            if (totalDistance > threshold && !showCongratsDialog && userLines.value.isNotEmpty()) {
+                                viewModel.earnRewardsForTracing()
+                                showCongratsDialog = true
+                            }
+                        }
+
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(activeLetterIdx) {
+                                    detectDragGestures(
+                                        onDragStart = { offset ->
+                                            userLines.value = userLines.value + listOf(listOf(offset))
+                                        },
+                                        onDrag = { change, _ ->
+                                            change.consume()
+                                            val currentLines = userLines.value.toMutableList()
+                                            if (currentLines.isNotEmpty()) {
+                                                val lastLine = currentLines.last().toMutableList()
+                                                lastLine.add(change.position)
+                                                currentLines[currentLines.lastIndex] = lastLine
+                                                userLines.value = currentLines
+                                            }
+                                        },
+                                        onDragEnd = {}
+                                    )
+                                }
+                        ) {
+                            // 1. Draw dashed tracing outlines
+                            drawTemplateLetter(letterData.char, canvasWidth, canvasHeight)
+
+                            // 2. Plot child paths with glow effect
+                            userLines.value.forEach { line ->
+                                if (line.isNotEmpty()) {
+                                    val path = Path().apply {
+                                        moveTo(line.first().x, line.first().y)
+                                        for (i in 1 until line.size) {
+                                            lineTo(line[i].x, line[i].y)
+                                        }
+                                    }
+                                    
+                                    // Glow behind
+                                    drawPath(
+                                        path = path,
+                                        color = selectedColor.copy(alpha = 0.3f),
+                                        style = Stroke(
+                                            width = strokeSize * density + 16f,
+                                            cap = StrokeCap.Round,
+                                            join = StrokeJoin.Round
+                                        )
+                                    )
+                                    
+                                    // Actual stroke
+                                    drawPath(
+                                        path = path,
+                                        color = selectedColor,
+                                        style = Stroke(
+                                            width = strokeSize * density,
+                                            cap = StrokeCap.Round,
+                                            join = StrokeJoin.Round
+                                        )
+                                    )
+                                }
+                            }
+
+                            // 3. Render guide arrow indicator over start coordination
+                            if (userLines.value.isEmpty()) {
+                                drawCircle(
+                                    color = Color(0xFF4CAF50).copy(alpha = 0.8f),
+                                    radius = 24.dp.toPx() * pulseScale,
+                                    center = Offset(letterData.arrowX * canvasWidth, letterData.arrowY * canvasHeight)
+                                )
+                                drawCircle(
+                                    color = Color(0xFF2E7D32),
+                                    radius = 12.dp.toPx(),
+                                    center = Offset(letterData.arrowX * canvasWidth, letterData.arrowY * canvasHeight)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // CRAYON PALETTE ROW SELECTOR
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    crayons.forEach { color ->
+                        val isSel = selectedColor == color
+                        val borderSize = if (isSel) 4.dp else 1.5.dp
+                        val borderColor = if (isSel) Color(0xFF3E2723) else Color.LightGray
+
+                        Box(
+                            modifier = Modifier
+                                .size(if (isSel) 38.dp else 30.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .border(borderSize, borderColor, CircleShape)
+                                .clickable { selectedColor = color }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // BOARD USER CONTROLS BUTTONS
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Undo line button
+            Button(
+                onClick = {
+                    if (userLines.value.isNotEmpty()) {
+                        userLines.value = userLines.value.dropLast(1)
+                    }
+                },
+                enabled = userLines.value.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D4C41)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.weight(1f).height(48.dp)
+            ) {
+                Text(LocalStrings.get("btn_undo", lang), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // Clear board button
+            Button(
+                onClick = { userLines.value = emptyList() },
+                enabled = userLines.value.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.weight(1f).height(48.dp)
+            ) {
+                Text(LocalStrings.get("btn_clear", lang), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // Verify achievement button
+            Button(
+                onClick = {
+                    if (userLines.value.isNotEmpty()) {
+                        viewModel.earnRewardsForTracing()
+                        showCongratsDialog = true
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.weight(1.2f).height(48.dp)
+            ) {
+                Text(
+                    text = when (lang) {
+                        "sq" -> "Përfundo! ✅"
+                        "de" -> "Fertig! ✅"
+                        "it" -> "Finito! ✅"
+                        "fr" -> "Fini! ✅"
+                        else -> "Finish! ✅"
+                    },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+    }
+
+    // SUCCESS CELEBRATION CONGRATS OVERLAY
+    if (showCongratsDialog) {
+        Dialog(onDismissRequest = { }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "🎈✨⭐️✨🎈", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = LocalStrings.get("congrats_tracing", lang),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        color = Color(0xFF2E7D32),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                showCongratsDialog = false
+                                userLines.value = emptyList()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = when (lang) {
+                                    "sq" -> "Provo sërish 🔄"
+                                    "de" -> "Wiederholen 🔄"
+                                    "it" -> "Riprova 🔄"
+                                    "fr" -> "Réessayer 🔄"
+                                    else -> "Retry 🔄"
+                                },
+                                color = Color.DarkGray,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                showCongratsDialog = false
+                                userLines.value = emptyList()
+                                activeLetterIdx = (activeLetterIdx + 1) % TRACING_LETTERS.size
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9100)),
+                            modifier = Modifier.weight(1.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = LocalStrings.get("btn_next", lang),
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Celebration fireworks layout
+    InteractiveCelebrationOverlay(
+        triggerSuccess = showCongratsDialog,
+        triggerFail = false,
+        modifier = Modifier.fillMaxSize()
+    )
+    } // closes Box
+} // closes LetterTracingScreen
+
+// Draw dashed guide paths for letters
+private fun DrawScope.drawTemplateLetter(letter: String, sizeWidth: Float, sizeHeight: Float) {
+    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(30f, 25f), 0f)
+    
+    // The thick light orange background of the letter
+    val backColor = Color(0xFFFFF3E0)
+    val backStrokeWidth = 80.dp.toPx() 
+
+    // The dashed dotted trace line in the center
+    val dashColor = Color(0xFFFF9800)
+    val dashStrokeWidth = 14.dp.toPx()
+
+    fun drawTraceLine(x1: Float, y1: Float, x2: Float, y2: Float) {
+        val startOff = Offset(x1 * sizeWidth, y1 * sizeHeight)
+        val endOff = Offset(x2 * sizeWidth, y2 * sizeHeight)
+        
+        // Background thick stroke
+        drawLine(
+            color = backColor,
+            start = startOff,
+            end = endOff,
+            strokeWidth = backStrokeWidth,
+            cap = StrokeCap.Round
+        )
+        // Center dashed stroke
+        drawLine(
+            color = dashColor,
+            start = startOff,
+            end = endOff,
+            strokeWidth = dashStrokeWidth,
+            cap = StrokeCap.Round,
+            pathEffect = dashEffect
+        )
+    }
+
+    fun drawTraceArc(startX: Float, startY: Float, midX: Float, midY: Float, endX: Float, endY: Float) {
+        val path = Path().apply {
+            moveTo(startX * sizeWidth, startY * sizeHeight)
+            quadraticTo(
+                midX * sizeWidth, midY * sizeHeight,
+                endX * sizeWidth, endY * sizeHeight
+            )
+        }
+        
+        // Background thick arc
+        drawPath(
+            path = path,
+            color = backColor,
+            style = Stroke(width = backStrokeWidth, cap = StrokeCap.Round)
+        )
+        // Center dashed arc
+        drawPath(
+            path = path,
+            color = dashColor,
+            style = Stroke(width = dashStrokeWidth, cap = StrokeCap.Round, pathEffect = dashEffect)
+        )
+    }
+
+    when (letter) {
+        "A" -> {
+            drawTraceLine(0.5f, 0.18f, 0.2f, 0.85f)
+            drawTraceLine(0.5f, 0.18f, 0.8f, 0.85f)
+            drawTraceLine(0.35f, 0.6f, 0.65f, 0.6f)
+        }
+        "B" -> {
+            drawTraceLine(0.35f, 0.18f, 0.35f, 0.85f)
+            drawTraceArc(0.35f, 0.18f, 0.75f, 0.35f, 0.35f, 0.5f)
+            drawTraceArc(0.35f, 0.5f, 0.8f, 0.675f, 0.35f, 0.85f)
+        }
+        "C" -> {
+            drawTraceArc(0.7f, 0.25f, 0.2f, 0.5f, 0.7f, 0.75f)
+        }
+        "D" -> {
+            drawTraceLine(0.35f, 0.18f, 0.35f, 0.85f)
+            drawTraceArc(0.35f, 0.18f, 0.85f, 0.5f, 0.35f, 0.85f)
+        }
+        "E" -> {
+            drawTraceLine(0.35f, 0.18f, 0.35f, 0.85f)
+            drawTraceLine(0.35f, 0.18f, 0.7f, 0.18f)
+            drawTraceLine(0.35f, 0.5f, 0.6f, 0.5f)
+            drawTraceLine(0.35f, 0.85f, 0.7f, 0.85f)
+        }
+        "F" -> {
+            drawTraceLine(0.35f, 0.18f, 0.35f, 0.85f)
+            drawTraceLine(0.35f, 0.18f, 0.7f, 0.18f)
+            drawTraceLine(0.35f, 0.5f, 0.6f, 0.5f)
+        }
+        "H" -> {
+            drawTraceLine(0.35f, 0.18f, 0.35f, 0.85f)
+            drawTraceLine(0.65f, 0.18f, 0.65f, 0.85f)
+            drawTraceLine(0.35f, 0.5f, 0.65f, 0.5f)
+        }
+        "I" -> {
+            drawTraceLine(0.5f, 0.18f, 0.5f, 0.85f)
+            drawTraceLine(0.35f, 0.18f, 0.65f, 0.18f)
+            drawTraceLine(0.35f, 0.85f, 0.65f, 0.85f)
+        }
+        "O" -> {
+            drawTraceArc(0.5f, 0.18f, 0.2f, 0.5f, 0.5f, 0.85f)
+            drawTraceArc(0.5f, 0.85f, 0.8f, 0.5f, 0.5f, 0.18f)
+        }
+        "T" -> {
+            drawTraceLine(0.3f, 0.18f, 0.7f, 0.18f)
+            drawTraceLine(0.5f, 0.18f, 0.5f, 0.85f)
+        }
+    }
+}
+
+// Draw a guide arrow showing writing start point & heading
+private fun DrawScope.drawGuideArrow(
+    arrowX: Float,
+    arrowY: Float,
+    angleDegrees: Float,
+    width: Float,
+    height: Float,
+    activeColor: Color = Color(0xFFFF6D00)
+) {
+    val pxX = arrowX * width
+    val pxY = arrowY * height
+    val radius = 18.dp.toPx()
+
+    // Circular start bubble
+    drawCircle(
+        color = activeColor.copy(alpha = 0.25f),
+        radius = radius * 1.5f,
+        center = Offset(pxX, pxY)
+    )
+    drawCircle(
+        color = activeColor,
+        radius = radius * 0.7f,
+        center = Offset(pxX, pxY)
+    )
+
+    // Direction line
+    val angleRad = Math.toRadians(angleDegrees.toDouble())
+    val dirX = (Math.cos(angleRad) * radius * 1.3).toFloat()
+    val dirY = (Math.sin(angleRad) * radius * 1.3).toFloat()
+
+    drawLine(
+        color = Color.White,
+        start = Offset(pxX, pxY),
+        end = Offset(pxX + dirX, pxY + dirY),
+        strokeWidth = 4.dp.toPx(),
+        cap = StrokeCap.Round
+    )
+}
+
+// ==========================================
+// 7. FIREWORKS AND AUDIO FEEDBACK ADDITIONS
+// ==========================================
+
+data class VisualParticle(
+    var x: Float,
+    var y: Float,
+    var vx: Float,
+    var vy: Float,
+    val color: Color,
+    val size: Float,
+    var alpha: Float,
+    var age: Int,
+    val maxAge: Int,
+    val isStar: Boolean = false
+)
+
+data class BubbleParticle(
+    var x: Float,
+    var y: Float,
+    var vx: Float,
+    var vy: Float,
+    val text: String,
+    val size: Float,
+    var alpha: Float,
+    var age: Int,
+    val maxAge: Int
+)
+
+interface AudioFeedbackController {
+    fun playSuccess()
+    fun playError()
+}
+
+@Composable
+fun rememberAudioFeedback(lang: String): AudioFeedbackController {
+    val context = LocalContext.current
+    val tts = remember { mutableStateOf<TextToSpeech?>(null) }
+    var toneGen by remember { mutableStateOf<ToneGenerator?>(null) }
+
+    DisposableEffect(lang) {
+        val ttsEngine = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val locale = when (lang) {
+                    "sq" -> Locale("sq")
+                    "de" -> Locale.GERMAN
+                    "it" -> Locale.ITALIAN
+                    "fr" -> Locale.FRENCH
+                    else -> Locale.ENGLISH
+                }
+                tts.value?.language = locale
+            }
+        }
+        tts.value = ttsEngine
+
+        try {
+            toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        onDispose {
+            ttsEngine.stop()
+            ttsEngine.shutdown()
+            try {
+                toneGen?.release()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    return remember(lang, tts.value, toneGen) {
+        object : AudioFeedbackController {
+            override fun playSuccess() {
+                try {
+                    toneGen?.startTone(ToneGenerator.TONE_SUP_CONFIRM, 180)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                val sentence = when (lang) {
+                    "sq" -> listOf("Uraaa! Shumë mirë!", "E saktë! Je fantastik!", "Bravo! Shumë bukur!", "Gjeniale!").random()
+                    "de" -> listOf("Hurra! Sehr gut!", "Richtig! Du bist fantastisch!", "Klasse gemacht!", "Wunderbar!").random()
+                    "it" -> listOf("Urrà! Molto bene!", "Esatto! Sei fantastico!", "Bravissimo!", "Perfetto!").random()
+                    "fr" -> listOf("Hourra! Très bien!", "Exact! Tu es fantastique!", "Bravo!", "Parfait!").random()
+                    else -> listOf("Hooray! Well done!", "Correct! You are a genius!", "Awesome job!", "Amazing!").random()
+                }
+                tts.value?.speak(sentence, TextToSpeech.QUEUE_FLUSH, null, "success_tts")
+            }
+
+            override fun playError() {
+                try {
+                    toneGen?.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 250)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                val sentence = when (lang) {
+                    "sq" -> listOf("Mos u mërzit, provoje përsëri!", "Gati e gjete! Provo sërish!", "Ti mund ta bësh!").random()
+                    "de" -> listOf("Nicht aufgeben, versuch es nochmal!", "Fast richtig! Versuch es weiter!", "Du schaffst das!").random()
+                    "it" -> listOf("Non preoccuparti, riprova!", "Quasi! Riprova ancora!", "Puoi farcela!").random()
+                    "fr" -> listOf("Ne t'inquiète pas, essaie encore!", "Presque ! Essaie encore!", "Tu peux le faire!").random()
+                    else -> listOf("Don't worry, try again!", "Almost had it! Try once more!", "Keep going! You can do it!").random()
+                }
+                tts.value?.speak(sentence, TextToSpeech.QUEUE_FLUSH, null, "fail_tts")
+            }
+        }
+    }
+}
+
+@Composable
+fun InteractiveCelebrationOverlay(
+    triggerSuccess: Boolean,
+    triggerFail: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val particles = remember { mutableStateListOf<VisualParticle>() }
+    val bubbleParticles = remember { mutableStateListOf<BubbleParticle>() }
+    var tickState by remember { mutableIntStateOf(0) }
+
+    // SUCCESS TRIGGERS (Fireworks Explosion)
+    LaunchedEffect(triggerSuccess) {
+        if (triggerSuccess) {
+            val colorsList = listOf(
+                Color(0xFFFF1744), // Red
+                Color(0xFF00E676), // Green
+                Color(0xFF2979FF), // Blue
+                Color(0xFFFFEA00), // Yellow
+                Color(0xFFFF9100), // Orange
+                Color(0xFFD500F9), // Purple
+                Color(0xFF00E5FF)  // Cyan
+            )
+            
+            // Multiple explosion origins inside 1000 x 1000 virtual space
+            val origins = listOf(
+                Offset(250f, 350f),
+                Offset(500f, 250f),
+                Offset(750f, 400f)
+            )
+
+            origins.forEach { origin ->
+                repeat(25) { i ->
+                    val angle = (2 * Math.PI * i / 25) + (Math.random() * 0.3)
+                    val speed = 3f + (Math.random() * 7f).toFloat()
+                    val vx = (Math.cos(angle) * speed).toFloat()
+                    val vy = (Math.sin(angle) * speed).toFloat()
+                    val color = colorsList.random()
+                    val size = 6f + (Math.random() * 8f).toFloat()
+                    val maxAge = 40 + (Math.random() * 25).toInt()
+                    
+                    particles.add(
+                        VisualParticle(
+                            x = origin.x,
+                            y = origin.y,
+                            vx = vx,
+                            vy = vy,
+                            color = color,
+                            size = size,
+                            alpha = 1f,
+                            age = 0,
+                            maxAge = maxAge,
+                            isStar = Math.random() > 0.5
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    // FAIL TRIGGERS (Falling Supportive Symbols)
+    LaunchedEffect(triggerFail) {
+        if (triggerFail) {
+            val sadEmojis = listOf("🌧️", "💧", "🌧️", "😿", "💔", "❄️", "☁️")
+            repeat(12) {
+                val startX = (Math.random() * 1000).toFloat()
+                val startY = (Math.random() * 150).toFloat()
+                val vx = -2f + (Math.random() * 4f).toFloat()
+                val vy = 3f + (Math.random() * 6f).toFloat()
+                val emoji = sadEmojis.random()
+                val size = 20f + (Math.random() * 14f).toFloat()
+                val maxAge = 55 + (Math.random() * 30).toInt()
+
+                bubbleParticles.add(
+                    BubbleParticle(
+                        x = startX,
+                        y = startY,
+                        vx = vx,
+                        vy = vy,
+                        text = emoji,
+                        size = size,
+                        alpha = 1f,
+                        age = 0,
+                        maxAge = maxAge
+                    )
+                )
+            }
+        }
+    }
+
+    // SIMULATION TICK LOOP
+    LaunchedEffect(particles.size, bubbleParticles.size) {
+        if (particles.isNotEmpty() || bubbleParticles.isNotEmpty()) {
+            while (particles.isNotEmpty() || bubbleParticles.isNotEmpty()) {
+                // Update firework sparks
+                val inactiveParticles = mutableListOf<VisualParticle>()
+                particles.forEach { p ->
+                    p.x += p.vx
+                    p.y += p.vy
+                    p.vy += 0.25f // gravity
+                    p.alpha = (p.alpha - 0.02f).coerceAtLeast(0f)
+                    p.age++
+                    if (p.age >= p.maxAge || p.alpha <= 0f) {
+                        inactiveParticles.add(p)
+                    }
+                }
+                particles.removeAll(inactiveParticles)
+
+                // Update sad clouds/drops
+                val inactiveBubbles = mutableListOf<BubbleParticle>()
+                bubbleParticles.forEach { b ->
+                    b.x += b.vx
+                    b.y += b.vy
+                    b.alpha = (b.alpha - 0.015f).coerceAtLeast(0f)
+                    b.age++
+                    if (b.age >= b.maxAge || b.alpha <= 0f) {
+                        inactiveBubbles.add(b)
+                    }
+                }
+                bubbleParticles.removeAll(inactiveBubbles)
+
+                tickState++
+                delay(16)
+            }
+        }
+    }
+
+    // RENDER CANVAS
+    Canvas(modifier = modifier.fillMaxSize()) {
+        // Force redraw on each simulation frame
+        val t = tickState
+
+        val scaleX = size.width / 1000f
+        val scaleY = size.height / 1000f
+
+        // Draw active success fireworks
+        particles.forEach { p ->
+            val drawX = p.x * scaleX
+            val drawY = p.y * scaleY
+            val radius = p.size * scaleX
+
+            if (p.isStar) {
+                // Draw a beautiful glowing star/cross
+                drawLine(
+                    color = p.color.copy(alpha = p.alpha),
+                    start = Offset(drawX - radius * 1.5f, drawY),
+                    end = Offset(drawX + radius * 1.5f, drawY),
+                    strokeWidth = radius * 0.4f,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = p.color.copy(alpha = p.alpha),
+                    start = Offset(drawX, drawY - radius * 1.5f),
+                    end = Offset(drawX, drawY + radius * 1.5f),
+                    strokeWidth = radius * 0.4f,
+                    cap = StrokeCap.Round
+                )
+            } else {
+                // Draw simple circular particle
+                drawCircle(
+                    color = p.color.copy(alpha = p.alpha),
+                    radius = radius,
+                    center = Offset(drawX, drawY)
+                )
+            }
+        }
+
+        // Draw active fail falling raindrops / emojis
+        bubbleParticles.forEach { b ->
+            val drawX = b.x * scaleX
+            val drawY = b.y * scaleY
+            
+            // Draw emojis/text on canvas
+            val textPaint = android.graphics.Paint().apply {
+                textSize = b.size * density
+                textAlign = android.graphics.Paint.Align.CENTER
+                alpha = (b.alpha * 255).toInt()
+            }
+            drawContext.canvas.nativeCanvas.drawText(
+                b.text,
+                drawX,
+                drawY,
+                textPaint
+            )
+        }
+    }
 }

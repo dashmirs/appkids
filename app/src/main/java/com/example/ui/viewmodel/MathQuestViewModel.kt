@@ -26,6 +26,7 @@ sealed interface QuestScreen {
     object StickerShop : QuestScreen
     object ParentGate : QuestScreen
     object ParentDashboard : QuestScreen
+    object LetterTracing : QuestScreen
 }
 
 // Categories of mathematical challenges
@@ -78,6 +79,9 @@ class MathQuestViewModel(application: Application) : AndroidViewModel(applicatio
     var showQuestCompletedSummary = mutableStateOf(false)
     var selectedAnswerState = mutableStateOf<Int?>(null) // null if unanswered or not validated
     var isAnswerCorrectState = mutableStateOf(false)
+
+    // Range for Addition/Subtraction learning: "1-10" or "10-100"
+    var mathRange = mutableStateOf("1-10")
 
     // Parent Hub Entry math equation verification code lock
     var parentChallengeNum1 by mutableStateOf(0)
@@ -233,37 +237,23 @@ class MathQuestViewModel(application: Application) : AndroidViewModel(applicatio
         when (category) {
             MathQuestCategory.ADDITION -> {
                 operation = "+"
-                when (difficulty) {
-                    "EASY" -> {
-                        num1 = Random.nextInt(1, 9)
-                        num2 = Random.nextInt(1, 9)
-                    }
-                    "MEDIUM" -> {
-                        num1 = Random.nextInt(5, 25)
-                        num2 = Random.nextInt(5, 25)
-                    }
-                    else -> { // HARD
-                        num1 = Random.nextInt(10, 55)
-                        num2 = Random.nextInt(10, 45)
-                    }
+                if (mathRange.value == "1-10") {
+                    num1 = Random.nextInt(1, 10)
+                    num2 = Random.nextInt(1, (11 - num1).coerceAtLeast(2))
+                } else {
+                    num1 = Random.nextInt(10, 81)
+                    num2 = Random.nextInt(10, (101 - num1).coerceAtLeast(11))
                 }
                 correctAnswer = num1 + num2
             }
             MathQuestCategory.SUBTRACTION -> {
                 operation = "-"
-                when (difficulty) {
-                    "EASY" -> {
-                        num1 = Random.nextInt(2, 10)
-                        num2 = Random.nextInt(1, num1) // No negative results
-                    }
-                    "MEDIUM" -> {
-                        num1 = Random.nextInt(15, 50)
-                        num2 = Random.nextInt(5, num1)
-                    }
-                    else -> { // HARD
-                        num1 = Random.nextInt(35, 100)
-                        num2 = Random.nextInt(10, num1)
-                    }
+                if (mathRange.value == "1-10") {
+                    num1 = Random.nextInt(2, 11)
+                    num2 = Random.nextInt(1, num1)
+                } else {
+                    num1 = Random.nextInt(20, 101)
+                    num2 = Random.nextInt(10, num1)
                 }
                 correctAnswer = num1 - num2
             }
@@ -444,6 +434,16 @@ class MathQuestViewModel(application: Application) : AndroidViewModel(applicatio
             _activeProfile.value = updated
         }
         return true
+    }
+
+    // AWARD REWARDS FOR WRITING LETTERS
+    fun earnRewardsForTracing() {
+        val currentProfile = _activeProfile.value ?: return
+        viewModelScope.launch {
+            val updated = currentProfile.copy(coins = currentProfile.coins + 10)
+            repository.updateProfile(updated)
+            _activeProfile.value = updated
+        }
     }
 
     // PARENTS HUB SECURITY LOCK
